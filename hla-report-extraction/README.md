@@ -12,12 +12,18 @@ first place. That extraction step is this module's entire scope.
 
 No REST API or browser UI yet (unlike `ld-service`) — this module isn't at
 that maturity. What exists today is a minimal CLI for manually trying a real
-PDF against whatever candidate-line detectors currently exist:
+PDF against whatever candidate-line detectors currently exist. Run both
+commands below from the repo root (the PDF argument resolves relative to
+wherever you run the command from, not relative to this module directory —
+this one points at a real fixture so it's copy-pasteable as-is):
 
 ```
 mvn -pl hla-report-extraction package
-hla-report-extraction/target/appassembler/bin/detect-hla-report path/to/report.pdf
+hla-report-extraction/target/appassembler/bin/detect-hla-report hla-report-extraction/src/test/resources/sample-reports/versiti-hla-c-high-resolution-sample.pdf
 ```
+
+Swap in the path to any PDF you want to try — one of your own, or either of
+the other two fixtures under `src/test/resources/sample-reports/`.
 
 Prints each detector's candidates as a review worklist (source line number +
 exact report text alongside each one) — **not** a GL String, not validated

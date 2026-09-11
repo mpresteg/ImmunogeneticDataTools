@@ -103,6 +103,16 @@ sufficed.
 
 ## Then (tentative — more real report samples will refine or replace this)
 
+Tracked as GitHub issues on this fork now that step 1 made the remaining
+steps concrete enough to decompose (previously just this list): see
+[#42](https://github.com/mpresteg/ImmunogeneticDataTools/issues/42),
+[#43](https://github.com/mpresteg/ImmunogeneticDataTools/issues/43),
+[#44](https://github.com/mpresteg/ImmunogeneticDataTools/issues/44),
+[#45](https://github.com/mpresteg/ImmunogeneticDataTools/issues/45),
+[#46](https://github.com/mpresteg/ImmunogeneticDataTools/issues/46). Keep
+this list and those issues in sync as work lands — don't let this become
+the stale copy.
+
 1. ~~PDF text-layer extraction~~ — done (`PdfTextExtractor`), with an OCR
    fallback for scanned pages still to come once a scanned sample exists to
    test one against. Prefer the embedded text layer; OCR only when it's
@@ -111,15 +121,17 @@ sufficed.
    review — never auto-parsed straight into a GL String. Needs to handle,
    as first-class cases rather than afterthoughts: Versiti's
    footnote-reference pattern (locus row → `R1` marker → footnote
-   resolving the ambiguity), CeGaT's fully-resolved no-ambiguity case, and
-   Histogenetics' G-code-as-primary-result plus its appendix's
-   G-code-to-included-alleles expansion and null-allele exclusions.
+   resolving the ambiguity, issue #42), CeGaT's fully-resolved
+   no-ambiguity case (issue #43), and Histogenetics' G-code-as-primary-result
+   plus its appendix's G-code-to-included-alleles expansion and
+   null-allele exclusions (issue #44).
 3. Human-reviewed candidates converted to a GL String via the existing
-   `GLStringUtilities` — Histogenetics' G-codes and NMDP allele codes are
-   promising anchors here, since `GLStringUtilities.decodeMAC()` already
-   exists to decode NMDP-coded typings.
-4. A validation gate before a GL String is considered "reviewed and ready" —
-   nothing silently guessed or auto-corrected along the way.
+   `GLStringUtilities` (issue #45) — Histogenetics' G-codes and NMDP
+   allele codes are promising anchors here, since
+   `GLStringUtilities.decodeMAC()` already exists to decode NMDP-coded
+   typings.
+4. A validation gate before a GL String is considered "reviewed and ready"
+   (issue #46) — nothing silently guessed or auto-corrected along the way.
 
 Deliberately underspecified beyond step 1 — this is a starting hypothesis,
 not a locked design.

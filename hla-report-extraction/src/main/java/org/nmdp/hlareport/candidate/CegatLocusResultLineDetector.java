@@ -22,10 +22,7 @@
 package org.nmdp.hlareport.candidate;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.dash.valid.Locus;
 
@@ -55,12 +52,6 @@ import org.dash.valid.Locus;
  * see the module README's "Structural signal, not a content guess" principle.
  */
 public class CegatLocusResultLineDetector {
-	// Built from Locus's own shortName rather than a hardcoded list of strings, so this
-	// stays in sync with whatever loci ld-validation's Locus enum recognizes rather than
-	// duplicating that knowledge here.
-	private static final Map<String, Locus> LOCUS_BY_SHORT_NAME = Arrays.stream(Locus.values())
-			.collect(Collectors.toMap(Locus::getShortName, locus -> locus));
-
 	public List<LocusResultCandidate> detect(String extractedText) {
 		List<LocusResultCandidate> candidates = new ArrayList<>();
 
@@ -77,16 +68,12 @@ public class CegatLocusResultLineDetector {
 
 	private LocusResultCandidate detectLine(String line, int lineNumber) {
 		String trimmedLine = line.trim();
-		// Avoid calling Locus.lookup() (and ld-validation's LOCUS_BY_SHORT_NAME) here as
-		// the first check -- Locus.lookup() logs a WARNING on every miss, and almost
-		// every line in a real report isn't a locus-result row, so that would spam the
-		// log once per non-matching line in the whole document.
 		String[] tokens = trimmedLine.split("\\s+");
 		if (tokens.length < 2 || tokens.length > 3) {
 			return null;
 		}
 
-		Locus locus = LOCUS_BY_SHORT_NAME.get(tokens[0]);
+		Locus locus = LocusLookup.byShortName(tokens[0]);
 		if (locus == null) {
 			return null;
 		}
@@ -111,7 +98,7 @@ public class CegatLocusResultLineDetector {
 	// structural signal, per the module README's guiding principle.
 	private boolean alleleTokenAgreesWithRowLocus(Locus rowLocus, String alleleToken) {
 		String prefix = AlleleToken.locusPrefix(alleleToken);
-		Locus alleleLocus = LOCUS_BY_SHORT_NAME.get(prefix);
+		Locus alleleLocus = LocusLookup.byShortName(prefix);
 		if (alleleLocus == null) {
 			return false;
 		}

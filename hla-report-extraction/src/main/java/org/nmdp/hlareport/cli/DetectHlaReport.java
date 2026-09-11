@@ -28,16 +28,16 @@ import java.util.List;
 import java.util.Map;
 
 import org.nmdp.hlareport.candidate.CegatLocusResultLineDetector;
-import org.nmdp.hlareport.candidate.LocusResultCandidate;
+import org.nmdp.hlareport.candidate.VersitiLocusResultLineDetector;
 import org.nmdp.hlareport.extract.PdfTextExtractor;
 
 /**
  * A minimal, interim CLI for manually trying this module's candidate-line detection
  * against a real PDF -- there's no packaged distribution or formal argument parsing
  * (unlike ld-tools' appassembler-based CLIs) because this module doesn't have a stable
- * enough surface yet to justify that ceremony: one lab format supported so far (#43),
- * with #42/#44 still open, and no GL String construction (#45) or validation gate
- * (#46) at all. This exists so a real PDF can be tried against what's here today,
+ * enough surface yet to justify that ceremony: two lab formats supported so far
+ * (#43, #42), with #44 still open, and no GL String construction (#45) or validation
+ * gate (#46) at all. This exists so a real PDF can be tried against what's here today,
  * without writing a one-off script by hand each time -- see the module README's
  * "Trying it yourself" section.
  *
@@ -47,9 +47,13 @@ import org.nmdp.hlareport.extract.PdfTextExtractor;
  * not a GL String, and nothing here should be treated as validated typing data.
  */
 public class DetectHlaReport {
-	// A small registry rather than hardcoding CegatLocusResultLineDetector as the only
-	// option -- adding #42 (Versiti) and #44 (Histogenetics) later should mean adding an
-	// entry here, not restructuring this class.
+	// A small registry rather than hardcoding one detector as the only option -- adding
+	// #44 (Histogenetics) later should mean adding an entry here, not restructuring this
+	// class. ReportDetector returns List<?> rather than a shared candidate type because
+	// there isn't one: CegatLocusResultLineDetector and VersitiLocusResultLineDetector
+	// each return their own candidate type (see VersitiLocusResultCandidate's class
+	// comment for why that's deliberate, not an oversight). Printed via each candidate's
+	// own toString() below, which is enough for a human review worklist.
 	private static final Map<String, ReportDetector> DETECTORS = buildDetectorRegistry();
 
 	public static void main(String[] args) {
@@ -94,12 +98,11 @@ public class DetectHlaReport {
 
 		for (Map.Entry<String, ReportDetector> entry : DETECTORS.entrySet()) {
 			String detectorName = entry.getKey();
-			List<LocusResultCandidate> candidates = entry.getValue().detect(extractedText);
+			List<?> candidates = entry.getValue().detect(extractedText);
 
 			System.out.println("== " + detectorName + " detector: " + candidates.size() + " candidate(s) ==");
-			for (LocusResultCandidate candidate : candidates) {
-				System.out.println("  line " + candidate.getLineNumber() + ": " + candidate.getLocus() + " -> "
-						+ candidate.getAlleleCalls() + "   [source: \"" + candidate.getSourceLine() + "\"]");
+			for (Object candidate : candidates) {
+				System.out.println("  " + candidate);
 			}
 			System.out.println();
 		}
@@ -108,11 +111,12 @@ public class DetectHlaReport {
 	private static Map<String, ReportDetector> buildDetectorRegistry() {
 		Map<String, ReportDetector> detectors = new LinkedHashMap<>();
 		detectors.put("cegat", new CegatLocusResultLineDetector()::detect);
+		detectors.put("versiti", new VersitiLocusResultLineDetector()::detect);
 		return detectors;
 	}
 
 	@FunctionalInterface
 	private interface ReportDetector {
-		List<LocusResultCandidate> detect(String extractedText);
+		List<?> detect(String extractedText);
 	}
 }

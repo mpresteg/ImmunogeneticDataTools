@@ -1,4 +1,4 @@
-# hla-report-extraction (early stage — text extraction + one lab's candidate-line detection so far)
+# hla-report-extraction (early stage — text extraction + 2 of 3 labs' candidate-line detection so far)
 
 ## Purpose
 
@@ -21,11 +21,12 @@ hla-report-extraction/target/appassembler/bin/detect-hla-report path/to/report.p
 
 Prints each detector's candidates as a review worklist (source line number +
 exact report text alongside each one) — **not** a GL String, not validated
-typing data. Right now that's one detector (`cegat`, issue #43); running it
-against a report from a different lab is expected to print 0 candidates, not
-an error — that's not a bug, it just means nothing here recognizes that
-report's shape yet (see "How tethered is this to the 3 known reports?"
-below).
+typing data. Right now that's two detectors (`cegat`/#43, `versiti`/#42);
+running it against a report from a different lab (or a third, still-unhandled
+lab like Histogenetics/#44) is expected to print 0 candidates for that
+detector, not an error — that's not a bug, it just means nothing here
+recognizes that report's shape yet (see "How tethered is this to the 3 known
+reports?" below).
 
 On macOS, if `JAVA_HOME` isn't set you may see a harmless
 `Unable to locate a Java Runtime` line before the real output — the
@@ -178,10 +179,11 @@ the stale copy.
    review — never auto-parsed straight into a GL String. Needs to handle,
    as first-class cases rather than afterthoughts: Versiti's
    footnote-reference pattern (locus row → `R1` marker → footnote
-   resolving the ambiguity, issue #42), CeGaT's fully-resolved
-   no-ambiguity case (~~issue #43~~ — done, see below), and Histogenetics'
-   G-code-as-primary-result plus its appendix's G-code-to-included-alleles
-   expansion and null-allele exclusions (issue #44).
+   resolving the ambiguity, ~~issue #42~~ — done, see below), CeGaT's
+   fully-resolved no-ambiguity case (~~issue #43~~ — done, see below), and
+   Histogenetics' G-code-as-primary-result plus its appendix's
+   G-code-to-included-alleles expansion and null-allele exclusions
+   (issue #44).
 
    **#43 done:** `CegatLocusResultLineDetector` detects CeGaT's
    `LOCUS ALLELE1 [ALLELE2]` row shape, producing a `LocusResultCandidate`
@@ -200,6 +202,30 @@ the stale copy.
      zero false positives), but a future report could in principle
      produce a same-shaped false positive elsewhere on the page — exactly
      why this produces review candidates, not trusted output.
+
+   **#42 done:** `VersitiLocusResultLineDetector` detects the header +
+   optional continuation line, follows any footnote marker (e.g. `R1`) to
+   its resolution elsewhere in the document, and attaches the resolved
+   text to the candidate — never just the bare G-group code. Produces a
+   distinct `VersitiLocusResultCandidate`/`FootnoteReferencedAlleleCall`
+   shape rather than reusing `LocusResultCandidate`: Versiti's report
+   carries real structure (per-allele-call footnote resolution, a
+   resolution-level descriptor like "High") CeGaT's simpler row has no
+   equivalent for, and forcing one shared candidate shape onto both with
+   only one real sample of each would be guessing at what should
+   generalize before there's evidence to know. Two things worth calling
+   out:
+   - A footnote marker seen with no matching definition found anywhere in
+     the document is surfaced as *unresolved* (not silently treated as if
+     there had been no marker at all) — `hasUnresolvedFootnoteReference()`
+     on both the allele call and the candidate. Exercised with a synthetic
+     case (`VersitiLocusResultLineDetectorTest`) since no real sample has
+     hit this yet.
+   - `LocusLookup`, a shared silent locus-shortName lookup, got factored
+     out of `CegatLocusResultLineDetector` once this detector needed the
+     identical lookup — the first real sign of what two detectors
+     genuinely have in common versus what's still per-lab (see "How
+     tethered is this to the 3 known reports?" above).
 3. Human-reviewed candidates converted to a GL String via the existing
    `GLStringUtilities` (issue #45) — Histogenetics' G-codes and NMDP
    allele codes are promising anchors here, since

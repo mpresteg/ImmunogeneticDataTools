@@ -42,32 +42,50 @@ first place. That extraction step is this module's entire scope.
 
 ## Current status
 
-One real, de-identified, lab-published sample report obtained: Versiti
-Wisconsin's official "SAMPLE REPORT" for test 91500 (HLA-C High Resolution).
-See `src/test/resources/sample-reports/PROVENANCE.md` for its source; it's
-safe to use as a test fixture (placeholder patient name, watermarked SAMPLE
-REPORT throughout, not real PHI).
+Three real, de-identified sample reports obtained, from three different
+labs. See `src/test/resources/sample-reports/PROVENANCE.md` for each
+source; all three are safe to use as test fixtures (placeholder or blank
+identifying fields, no recoverable PHI — verified directly against each
+file's text layer, not just visually).
+
+- **Versiti Wisconsin** — test 91500, HLA-C High Resolution. Locus result
+  reported as two allele calls; the second at the G-group level, resolved
+  via an `R1` footnote reference to the underlying ambiguous alleles
+  (`C*07:04:01G = HLA-C*07:04:01G=C*07:04/11`). A naive "read the row,
+  done" parser would silently drop that ambiguity.
+- **CeGaT** — HLA class I and II typing. The "easy case": every locus
+  reported as two fully-resolved alleles (or one, for a homozygous or
+  single-gene-present locus like DRB345), no G-codes, no footnotes, no
+  ambiguity at all.
+- **Histogenetics** — an 11-page patient + two-donor bone marrow/stem cell
+  matching report, the richest of the three. Reports **G-codes as the
+  primary result** (e.g. `A* 02:01:01G`), not resolved alleles — closer to
+  GL-String's own ambiguity model than either other report. Includes a
+  donor-matching ratio (`10/10 Matched`), a `Null Allele Resolution Status`
+  footnote per sample (specific null alleles explicitly excluded from a
+  G-code call), an NMDP-code fallback when G-code resolution isn't
+  available (`DQB1*02:DKCVG`), and a full appendix expanding every G-code
+  to its NMDP allele code and complete enumerated list of included alleles.
+  Also has a page-numbering quirk worth remembering: the PDF's physical
+  page 2 prints footer "Page 3 of 14" — physical page index and printed
+  page number diverge, so anything anchored to a printed "Page X of Y"
+  string needs to not assume it lines up with `PDDocument` page indices.
 
 Step 1 only so far: `PdfTextExtractor` pulls the embedded text layer out of
-a report PDF, tested against that sample. It does no interpretation of the
-text — no locus/allele recognition, no line classification. That's
+a report PDF, tested against all three samples (`PdfTextExtractorTest`
+covers each, plus the multi-page Histogenetics appendix specifically, to
+confirm extraction isn't just reading page 1). It does no interpretation of
+the text — no locus/allele recognition, no line classification. That's
 deliberate: "did we read the PDF correctly" and "did we understand what it
 says" are being kept as independently testable, separately reviewable
 concerns (see Guiding principles above).
 
-That one sample already surfaced a real structural wrinkle worth designing
-around before writing candidate-line-detection logic: this report's locus
-result rows can carry a footnote reference (e.g. `C*07:04:01G` marked `R1`)
-that resolves, elsewhere on the page, to the underlying ambiguous alleles
-(`C*07:04:01G = HLA-C*07:04:01G=C*07:04/11`). A naive "read the row, done"
-parser would silently drop that ambiguity. Whether this is a one-lab
-convention or a common pattern across labs is exactly the kind of thing more
-real samples would confirm or rule out.
-
-**Still need more real, de-identified samples** — ideally from more than one
-lab — before generalizing candidate-line-detection or GL String construction
-logic beyond this one report's conventions. One sample is enough to start
-scaffolding against; it's not enough to design a general parser against.
+These three already show genuinely different ambiguity-representation
+strategies — none, footnote-resolved, and G-code-as-primary-result — which
+is exactly why one sample wasn't enough to design candidate-line-detection
+against. **Still want more real, de-identified samples** — every additional
+lab's convention narrows the gap between "a design that handles the samples
+seen so far" and "a design that generalizes."
 
 On **VLM / OCR / managed document-AI (e.g. Textract, Document Intelligence,
 Bedrock Data Automation)** as alternatives to text-layer extraction: not
@@ -76,11 +94,12 @@ page images to a third-party cloud API means that PHI leaves the local
 machine — not something this library can assume every downstream user has a
 BAA in place for. A VLM's output is also a probabilistic guess dressed up as
 structured data, which cuts against "structural signal, not a content
-guess" above: harder to make it fail loud on an ambiguous case like the
-`R1` footnote pattern, versus a rule-based parser that either matches a
-known pattern or doesn't. The one sample obtained so far has a real text
-layer, so there's been nothing to actually test OCR against yet either —
-text-layer extraction alone has sufficed.
+guess" above: harder to make it fail loud on an ambiguous case like
+Versiti's `R1` footnote or Histogenetics' null-allele exclusions, versus a
+rule-based parser that either matches a known pattern or doesn't. All three
+samples obtained so far have a real text layer, so there's been nothing to
+actually test OCR against yet either — text-layer extraction alone has
+sufficed.
 
 ## Then (tentative — more real report samples will refine or replace this)
 
@@ -89,12 +108,16 @@ text-layer extraction alone has sufficed.
    test one against. Prefer the embedded text layer; OCR only when it's
    effectively empty; OCR-derived candidates flagged for extra scrutiny.
 2. Candidate-line detection for HLA-typing-shaped content, surfaced for
-   review — never auto-parsed straight into a GL String. Needs to handle
-   this report's footnote-reference pattern (locus row → `R1` marker →
-   footnote resolving the ambiguity) as a first-class case, not an
-   afterthought.
+   review — never auto-parsed straight into a GL String. Needs to handle,
+   as first-class cases rather than afterthoughts: Versiti's
+   footnote-reference pattern (locus row → `R1` marker → footnote
+   resolving the ambiguity), CeGaT's fully-resolved no-ambiguity case, and
+   Histogenetics' G-code-as-primary-result plus its appendix's
+   G-code-to-included-alleles expansion and null-allele exclusions.
 3. Human-reviewed candidates converted to a GL String via the existing
-   `GLStringUtilities`.
+   `GLStringUtilities` — Histogenetics' G-codes and NMDP allele codes are
+   promising anchors here, since `GLStringUtilities.decodeMAC()` already
+   exists to decode NMDP-coded typings.
 4. A validation gate before a GL String is considered "reviewed and ready" —
    nothing silently guessed or auto-corrected along the way.
 

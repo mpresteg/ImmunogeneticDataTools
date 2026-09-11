@@ -122,9 +122,27 @@ the stale copy.
    as first-class cases rather than afterthoughts: Versiti's
    footnote-reference pattern (locus row → `R1` marker → footnote
    resolving the ambiguity, issue #42), CeGaT's fully-resolved
-   no-ambiguity case (issue #43), and Histogenetics' G-code-as-primary-result
-   plus its appendix's G-code-to-included-alleles expansion and
-   null-allele exclusions (issue #44).
+   no-ambiguity case (~~issue #43~~ — done, see below), and Histogenetics'
+   G-code-as-primary-result plus its appendix's G-code-to-included-alleles
+   expansion and null-allele exclusions (issue #44).
+
+   **#43 done:** `CegatLocusResultLineDetector` detects CeGaT's
+   `LOCUS ALLELE1 [ALLELE2]` row shape, producing a `LocusResultCandidate`
+   per locus (never a GL String directly — see "Guiding principles"
+   above). Two things worth calling out:
+   - It cross-checks that each allele token's own locus prefix agrees
+     with the row's declared locus (accounting for DRB345's combined-locus
+     special case, where the real prefix is whichever of DRB3/4/5 is
+     actually present) — turning "looks allele-shaped" into "is
+     internally consistent with the row it's on," a stronger structural
+     signal than a bare shape match.
+   - It's shape-driven, not section-scoped — it doesn't look for CeGaT's
+     "Results" header first. Confirmed safe against all three known
+     reports (`CegatLocusResultLineDetectorTest` includes negative cases
+     against Versiti's and Histogenetics' differently-shaped reports,
+     zero false positives), but a future report could in principle
+     produce a same-shaped false positive elsewhere on the page — exactly
+     why this produces review candidates, not trusted output.
 3. Human-reviewed candidates converted to a GL String via the existing
    `GLStringUtilities` (issue #45) — Histogenetics' G-codes and NMDP
    allele codes are promising anchors here, since

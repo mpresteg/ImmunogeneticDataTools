@@ -1,4 +1,4 @@
-# hla-report-extraction (early stage — PDF text extraction only, no parsing yet)
+# hla-report-extraction (early stage — text extraction + one lab's candidate-line detection so far)
 
 ## Purpose
 
@@ -7,6 +7,31 @@ This closes a real gap in the reactor: `ld-validation` analyzes GL Strings once
 you have them, and `ld-service` exposes that analysis over REST and a browser
 UI, but nothing here gets you *from* "a PDF a lab sent" *to* a GL String in the
 first place. That extraction step is this module's entire scope.
+
+## Trying it yourself
+
+No REST API or browser UI yet (unlike `ld-service`) — this module isn't at
+that maturity. What exists today is a minimal CLI for manually trying a real
+PDF against whatever candidate-line detectors currently exist:
+
+```
+mvn -pl hla-report-extraction package
+hla-report-extraction/target/appassembler/bin/detect-hla-report path/to/report.pdf
+```
+
+Prints each detector's candidates as a review worklist (source line number +
+exact report text alongside each one) — **not** a GL String, not validated
+typing data. Right now that's one detector (`cegat`, issue #43); running it
+against a report from a different lab is expected to print 0 candidates, not
+an error — that's not a bug, it just means nothing here recognizes that
+report's shape yet (see "How tethered is this to the 3 known reports?"
+below).
+
+On macOS, if `JAVA_HOME` isn't set you may see a harmless
+`Unable to locate a Java Runtime` line before the real output — the
+generated script still finds a real JDK on `PATH` and runs correctly
+afterward; this is a pre-existing `appassembler-maven-plugin` quirk shared
+with `ld-tools`' generated scripts, nothing specific to this module.
 
 ## Relationship to the rest of this repo
 
@@ -86,6 +111,38 @@ is exactly why one sample wasn't enough to design candidate-line-detection
 against. **Still want more real, de-identified samples** — every additional
 lab's convention narrows the gap between "a design that handles the samples
 seen so far" and "a design that generalizes."
+
+### How tethered is this to the 3 known reports?
+
+Honestly: quite. Worth being precise about what's actually general versus
+what's report-specific, since it's not uniform:
+
+- **Genuinely general:** `PdfTextExtractor` (no report-specific
+  assumptions), `AlleleToken` (the `LOCUS*field:field...` shape is standard
+  HLA nomenclature, not a lab-ism), `LocusResultCandidate` (a plain data
+  carrier), and the overall extract → detect → human-reviewed-candidate →
+  GL-String pipeline shape.
+- **Tightly tethered:** each detector itself. `CegatLocusResultLineDetector`
+  (#43) recognizes exactly one row shape — bare locus label, then 1-2
+  allele tokens, nothing else on the line, whitespace-separated. It would
+  **not** detect a row with a comma between alleles, a row with extra
+  trailing text (an annotation column, an inline zygosity note), or
+  serological notation (`A2, B7`) instead of star-allele notation — the
+  original design doc flagged that last one as a real possibility, and it's
+  still entirely unhandled by anything in this module. Even a different
+  *template revision* of the same CeGaT report could reflow the table
+  slightly and break this exact detector.
+
+So: one lab format in, one detector out, by design (each detector is built
+against real text it's actually been tested against, not a guess at "what a
+typical report looks like" — see "Real reports drive the grammar, not
+assumption" above). That's deliberate, but it doesn't scale forever: if a
+bespoke detector is still the answer after 6-8 more labs with nothing
+generalizing, that's the point to seriously consider a more general,
+configurable table-shape matcher (or genuine structural layout analysis)
+instead of continuing to hand-write one class per lab. Revisiting this
+periodically as real samples accumulate, rather than deciding it now with
+too little data to know which parts would actually generalize.
 
 On **VLM / OCR / managed document-AI (e.g. Textract, Document Intelligence,
 Bedrock Data Automation)** as alternatives to text-layer extraction: not

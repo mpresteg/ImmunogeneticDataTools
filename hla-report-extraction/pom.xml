@@ -40,18 +40,18 @@
     <project.build.targetEncoding>UTF-8</project.build.targetEncoding>
   </properties>
 
-  <!-- ld-validation: not used by any code yet (this initial scaffold only extracts raw
-       text; see the module README's "Then" section, step 1). Declared now anyway since the
-       module README already commits to reusing GLStringUtilities/GLStringConstants for GL
-       String construction once candidate-line-detection/parsing exists, rather than
-       reinventing GL String syntax later.
+  <!-- ld-validation: so far only used for its Locus enum (candidate-line detection,
+       issue #43, recognizes/cross-checks locus labels via it). Not yet used for GL
+       String construction, but the module README already commits to reusing
+       GLStringUtilities/GLStringConstants for that once candidate-line-detection
+       produces something worth converting, rather than reinventing GL String syntax.
 
        pdfbox: text-layer extraction is this module's primary path (see the module README's
        "Guiding principles": prefer the embedded text layer, OCR only as a fallback for
        scanned pages, and nothing cloud-based/VLM-based in the default path, since real
        reports carry real patient PHI). OCR fallback (e.g. Tess4J) intentionally not added
-       yet: the one real sample obtained so far (Versiti Wisconsin's published SAMPLE
-       REPORT) has a real text layer, so there's nothing to test an OCR path against yet. -->
+       yet: none of the three real samples obtained so far need it, all have a real text
+       layer, so there's nothing to test an OCR path against yet. -->
   <dependencies>
     <dependency>
       <groupId>org.nmdp.validation</groupId>
@@ -64,4 +64,40 @@
       <version>3.0.8</version>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Just appassembler, not the full ld-tools packaging trio (also
+           maven-assembly-plugin + jdeb there for a shippable tar.gz/.deb
+           distribution): this module isn't at that maturity yet (one lab format
+           supported, no GL String output, no validation gate). This alone is enough to
+           get a runnable `target/appassembler/bin/detect-hla-report` script for
+           manually trying a real PDF against whatever detectors currently exist, which
+           is genuinely useful today; a full distribution isn't, yet. -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>appassembler-maven-plugin</artifactId>
+        <version>2.1.0</version>
+        <configuration>
+          <repositoryLayout>flat</repositoryLayout>
+          <repositoryName>lib</repositoryName>
+          <installBooterArtifacts>false</installBooterArtifacts>
+          <programs>
+            <program>
+              <id>detect-hla-report</id>
+              <mainClass>org.nmdp.hlareport.cli.DetectHlaReport</mainClass>
+            </program>
+          </programs>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>assemble</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>

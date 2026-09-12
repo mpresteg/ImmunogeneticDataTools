@@ -114,17 +114,11 @@ public class HistogeneticsAppendixEntry {
 	}
 
 	/**
-	 * @return true if reportedValue is a real G-code (ends in a digit followed by "G",
-	 *         per the report's own note #3: "Allele bearing suffix G"), false if it's
-	 *         an NMDP-code fallback (e.g. "02:DKCVG", which ends in a letter followed by
-	 *         "G" -- not the same shape). A convenience interpretation, not an
-	 *         authoritative decode -- a reviewer can always check reportedValue's exact
-	 *         text themselves.
+	 * @return true if reportedValue is a real G-code, false if it's an NMDP-code
+	 *         fallback -- see {@link HistogeneticsCode#isGCode(String)}.
 	 */
 	public boolean isGCode() {
-		return reportedValue.length() >= 2
-				&& reportedValue.charAt(reportedValue.length() - 1) == 'G'
-				&& Character.isDigit(reportedValue.charAt(reportedValue.length() - 2));
+		return HistogeneticsCode.isGCode(reportedValue);
 	}
 
 	@Override

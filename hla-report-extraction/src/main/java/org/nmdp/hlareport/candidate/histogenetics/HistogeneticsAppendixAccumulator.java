@@ -51,14 +51,13 @@ import org.nmdp.hlareport.candidate.LocusLookup;
  * -- see {@link HistogeneticsAppendixEntry#getSampleId()}. Each sample's rows are kept
  * independently; nothing here assumes or checks that repeated samples' rows agree
  * with each other, per issue #50's own note not to deduplicate on that assumption.
+ *
+ * Code-shape recognition (a row header's columns 2 and 3) is factored out into
+ * {@link HistogeneticsCode}, shared with the page-1 table detector (issue #49) -- the
+ * first genuine sign of what those two pieces have in common.
  */
 public class HistogeneticsAppendixAccumulator {
 	private static final String SAMPLE_ID_PREFIX = "Sample ID :";
-
-	// Covers both a real G-code ("02:01:01G") and an NMDP allele code ("02:DMFHE",
-	// "13:01:01") -- both columns 2 and 3 of a row header use this same general shape,
-	// digit-led colon-separated fields where any field may be digits, letters, or both.
-	private static final Pattern CODE_TOKEN_PATTERN = Pattern.compile("^[0-9]+(:[0-9A-Za-z]+)*$");
 
 	private static final String EXON_LITERAL = "Exon";
 	private static final Pattern SEGMENT_LIST_PATTERN = Pattern.compile("^[0-9]+(,[0-9]+)*$");
@@ -115,9 +114,9 @@ public class HistogeneticsAppendixAccumulator {
 		}
 
 		Locus locus = LocusLookup.byShortName(tokens[0]);
-		if (locus == null || !CODE_TOKEN_PATTERN.matcher(tokens[1]).matches()
-				|| !CODE_TOKEN_PATTERN.matcher(tokens[2]).matches() || !EXON_LITERAL.equals(tokens[3])
-				|| !SEGMENT_LIST_PATTERN.matcher(tokens[4]).matches() || !ALLELE_CHUNK_PATTERN.matcher(tokens[5]).matches()) {
+		if (locus == null || !HistogeneticsCode.isCodeShaped(tokens[1]) || !HistogeneticsCode.isCodeShaped(tokens[2])
+				|| !EXON_LITERAL.equals(tokens[3]) || !SEGMENT_LIST_PATTERN.matcher(tokens[4]).matches()
+				|| !ALLELE_CHUNK_PATTERN.matcher(tokens[5]).matches()) {
 			return null;
 		}
 

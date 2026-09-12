@@ -189,7 +189,7 @@ the stale copy.
    fully-resolved no-ambiguity case (~~issue #43~~ — done, see below), and
    Histogenetics' G-code-as-primary-result plus its appendix's
    G-code-to-included-alleles expansion and null-allele exclusions
-   (issue #44).
+   (issue #44, split into #48/#49/#50/#51 once work started — see below).
 
    **#43 done:** `CegatLocusResultLineDetector` detects CeGaT's
    `LOCUS ALLELE1 [ALLELE2]` row shape, producing a `LocusResultCandidate`
@@ -232,6 +232,43 @@ the stale copy.
      identical lookup — the first real sign of what two detectors
      genuinely have in common versus what's still per-lab (see "How
      tethered is this to the 3 known reports?" above).
+
+   **#44 turned out bigger than scoped, split into #48/#49/#50/#51 once
+   work actually started** — the fixture PDF is genuinely 4 separate
+   reports bundled together, not one: a "Complete"-status patient+2-donors
+   report (the original scope), plus a **FAILED** typing (insufficient
+   DNA), a **PENDING** typing, and one using `XXXX` placeholders with
+   ambiguity expressed as narrative prose in the Report History section
+   instead of a table at all (e.g.
+   `Possible Allele in A : 01:01:01/02:01:01/30:01:01.`) — a fourth
+   ambiguity-representation convention, on top of the three the module
+   README already tracked. This is exactly the kind of thing "real reports
+   drive the grammar, not assumption" is for: none of this was visible
+   until actually reading the whole document closely enough to build
+   against it.
+
+   **#48 done:** `HistogeneticsNoiseFilter` strips the per-page boilerplate
+   (watermark fragments, letterhead, footer, CONFIDENTIAL/DISCLAIMER
+   notices, repeated report title, repeated appendix column headers)
+   before any candidate-line detection runs. Confirmed this isn't just
+   cosmetic: a single appendix G-code's `Included Alleles` list can be
+   interrupted **mid-stream** by ~17 lines of this boilerplate at a page
+   break, and the filter's whole job is turning the two halves back into
+   adjacent lines so #50's planned accumulator can treat "keep consuming
+   until the next line looks like a new locus row" as actually sufficient,
+   rather than needing to understand every boilerplate category itself.
+   Also confirmed the watermark's letter-grouping isn't perfectly
+   consistent across every occurrence (one instance splits differently
+   than the rest) — matched by shape (short, all-caps, letters-only line)
+   per the issue's own suggested heuristic, not by memorizing the literal
+   fragment list. New `org.nmdp.hlareport.candidate.histogenetics`
+   subpackage, since Histogenetics needs several distinct pieces
+   (filter, page-1 table detector, appendix accumulator, non-standard-state
+   handling) where CeGaT/Versiti each only needed one class.
+
+   **#49, #50, #51 not started** — page-1 G-code/NMDP-code table detection,
+   the multi-line appendix accumulator (depends on #48, now unblocked), and
+   FAILED/PENDING/narrative-ambiguity handling, respectively.
 3. Human-reviewed candidates converted to a GL String via the existing
    `GLStringUtilities` (issue #45) — Histogenetics' G-codes and NMDP
    allele codes are promising anchors here, since

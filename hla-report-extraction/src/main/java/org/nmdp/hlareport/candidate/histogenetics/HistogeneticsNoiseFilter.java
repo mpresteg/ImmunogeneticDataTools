@@ -85,11 +85,13 @@ public final class HistogeneticsNoiseFilter {
 	/**
 	 * @param extractedText the report's full extracted text (e.g. from
 	 *                       {@link org.nmdp.hlareport.extract.PdfTextExtractor})
-	 * @return every line NOT identified as boilerplate, in original relative order
+	 * @return every line NOT identified as boilerplate, in original relative order,
+	 *         each paired with its 1-based line number in extractedText -- see
+	 *         {@link NumberedLine}'s class comment for why that's carried along
 	 */
-	public List<String> filterNoise(String extractedText) {
+	public List<NumberedLine> filterNoise(String extractedText) {
 		String[] lines = extractedText.split("\\r?\\n");
-		List<String> cleaned = new ArrayList<>();
+		List<NumberedLine> cleaned = new ArrayList<>();
 
 		int i = 0;
 		while (i < lines.length) {
@@ -109,7 +111,7 @@ public final class HistogeneticsNoiseFilter {
 				continue;
 			}
 
-			cleaned.add(lines[i]);
+			cleaned.add(new NumberedLine(i + 1, lines[i]));
 			i++;
 		}
 

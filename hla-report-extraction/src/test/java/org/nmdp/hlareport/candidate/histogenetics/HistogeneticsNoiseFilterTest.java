@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.nmdp.hlareport.extract.PdfTextExtractor;
@@ -51,18 +52,18 @@ public class HistogeneticsNoiseFilterTest {
 
 	@Test
 	public void testNoKnownNoiseLineSurvivesFiltering() throws IOException, URISyntaxException {
-		List<String> cleaned = filter.filterNoise(extractText());
+		List<NumberedLine> cleaned = filter.filterNoise(extractText());
 
-		for (String line : cleaned) {
-			assertFalse(ANY_KNOWN_NOISE_LINE.matcher(line.trim()).matches(),
+		for (NumberedLine line : cleaned) {
+			assertFalse(ANY_KNOWN_NOISE_LINE.matcher(line.getText().trim()).matches(),
 					"Expected this line to have been filtered as noise: \"" + line + "\"");
 		}
 	}
 
 	@Test
 	public void testRealContentSurvivesAcrossAllFourBundledReports() throws IOException, URISyntaxException {
-		List<String> cleaned = filter.filterNoise(extractText());
-		String joined = String.join("\n", cleaned);
+		List<NumberedLine> cleaned = filter.filterNoise(extractText());
+		String joined = cleaned.stream().map(NumberedLine::getText).collect(Collectors.joining("\n"));
 
 		// Sample ID lines are NOT noise -- they're the only signal marking which
 		// sample's appendix block follows (see the class comment).
@@ -92,14 +93,26 @@ public class HistogeneticsNoiseFilterTest {
 		// halves of one interrupted field back into adjacent lines. Before filtering,
 		// ~17 lines of boilerplate (footer, disclaimer, page number, watermark,
 		// letterhead, title, repeated column headers) sit between these two halves in
-		// the real extracted text.
-		List<String> cleaned = filter.filterNoise(extractText());
+		// the real extracted text (original lines 139 and 160).
+		List<NumberedLine> cleaned = filter.filterNoise(extractText());
 
-		int firstHalfIndex = cleaned.indexOf("13:02:01:11/13:02:01:12/13:02:01:13/13:02:01:14/13:02:01:15/");
+		int firstHalfIndex = -1;
+		for (int i = 0; i < cleaned.size(); i++) {
+			if ("13:02:01:11/13:02:01:12/13:02:01:13/13:02:01:14/13:02:01:15/".equals(cleaned.get(i).getText())) {
+				firstHalfIndex = i;
+				break;
+			}
+		}
 		assertTrue(firstHalfIndex >= 0, "Expected to find the first half of the split Included Alleles list");
-		assertEquals("13:02:01:16/13:02:20/13:02:28/13:114/13:116N/13:117/13:123Q/13:125/",
-				cleaned.get(firstHalfIndex + 1),
+
+		NumberedLine firstHalf = cleaned.get(firstHalfIndex);
+		NumberedLine secondHalf = cleaned.get(firstHalfIndex + 1);
+		assertEquals(139, firstHalf.getLineNumber(), "Expected original line numbers to be preserved through filtering");
+		assertEquals("13:02:01:16/13:02:20/13:02:28/13:114/13:116N/13:117/13:123Q/13:125/", secondHalf.getText(),
 				"Expected the second half to immediately follow the first after filtering -- the whole point of this filter");
+		assertEquals(160, secondHalf.getLineNumber(),
+				"Expected the second half's ORIGINAL line number to reflect the real gap (not e.g. 140), even though"
+						+ " it's now positionally adjacent to the first half after filtering");
 	}
 
 	private String extractText() throws IOException, URISyntaxException {

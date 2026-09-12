@@ -1,4 +1,4 @@
-# hla-report-extraction (early stage — text extraction + 2 of 3 labs' candidate-line detection so far)
+# hla-report-extraction (early stage — text extraction + partial candidate-line detection for all 3 labs so far)
 
 ## Purpose
 
@@ -27,10 +27,12 @@ the other two fixtures under `src/test/resources/sample-reports/`.
 
 Prints each detector's candidates as a review worklist (source line number +
 exact report text alongside each one) — **not** a GL String, not validated
-typing data. Right now that's two detectors (`cegat`/#43, `versiti`/#42);
-running it against a report from a different lab (or a third, still-unhandled
-lab like Histogenetics/#44) is expected to print 0 candidates for that
-detector, not an error — that's not a bug, it just means nothing here
+typing data. Right now that's three detectors (`cegat`/#43, `versiti`/#42,
+`histogenetics-appendix`/#50 — Histogenetics' page-1 table (#49) and
+FAILED/PENDING/narrative handling (#51) aren't done yet); running it
+against a report shape a given detector doesn't recognize is expected to
+print 0 candidates for that detector, not an error — that's not a bug, it
+just means nothing here
 recognizes that report's shape yet (see "How tethered is this to the 3 known
 reports?" below).
 
@@ -266,9 +268,35 @@ the stale copy.
    (filter, page-1 table detector, appendix accumulator, non-standard-state
    handling) where CeGaT/Versiti each only needed one class.
 
-   **#49, #50, #51 not started** — page-1 G-code/NMDP-code table detection,
-   the multi-line appendix accumulator (depends on #48, now unblocked), and
-   FAILED/PENDING/narrative-ambiguity handling, respectively.
+   **#50 done:** `HistogeneticsAppendixAccumulator` reassembles each
+   appendix row's `Included Alleles` list across however many physical
+   lines it spans (up to ~39 for the longest one, including a mid-list page
+   break), attributing each row to the correct sample (patient/donor 1/
+   donor 2) via the nearest preceding `Sample ID :` marker. Confirmed
+   against the real fixture: 30 entries (10 rows × 3 samples), not
+   deduplicated even though all 3 samples' content is identical here — per
+   the issue's own note not to assume repeats always match. Two things
+   worth calling out:
+   - `HistogeneticsNoiseFilter` (#48) got a small follow-up refactor here:
+     it now returns `NumberedLine` (text + original line number) instead
+     of plain `String`, since this accumulator needed real traceability
+     back to the source document — filtering discards line-number
+     continuity, and without carrying original numbers along, a candidate
+     class would either lose that traceability or have to re-derive it.
+     Confirmed the numbers survive correctly: the two halves of the
+     page-break-split list from #48's own test are original lines 139 and
+     160, not adjacent originally, even though they're adjacent
+     post-filtering.
+   - `isGCode()` distinguishes a real G-code (e.g. `02:01:01G`, ends in
+     digit+`G`) from an NMDP-code fallback that happens to also end in
+     `G` (e.g. `02:DKCVG`, ends in letter+`G`) — confirmed against the
+     real `DQB1*02:DKCVG` row, which is the fallback case per the report's
+     own note #4 (no G-code was available, so the reported value *is* the
+     NMDP code, duplicated in both columns).
+
+   **#49, #51 not started** — page-1 G-code/NMDP-code table detection, and
+   FAILED/PENDING/narrative-ambiguity handling, respectively. Independent
+   of #50 (and of each other), same as CeGaT/Versiti are independent.
 3. Human-reviewed candidates converted to a GL String via the existing
    `GLStringUtilities` (issue #45) — Histogenetics' G-codes and NMDP
    allele codes are promising anchors here, since

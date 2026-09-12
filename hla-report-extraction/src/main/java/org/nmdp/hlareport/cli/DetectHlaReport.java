@@ -29,17 +29,18 @@ import java.util.Map;
 
 import org.nmdp.hlareport.candidate.CegatLocusResultLineDetector;
 import org.nmdp.hlareport.candidate.VersitiLocusResultLineDetector;
+import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsAppendixAccumulator;
 import org.nmdp.hlareport.extract.PdfTextExtractor;
 
 /**
  * A minimal, interim CLI for manually trying this module's candidate-line detection
  * against a real PDF -- there's no packaged distribution or formal argument parsing
  * (unlike ld-tools' appassembler-based CLIs) because this module doesn't have a stable
- * enough surface yet to justify that ceremony: two lab formats supported so far
- * (#43, #42), with #44 still open, and no GL String construction (#45) or validation
- * gate (#46) at all. This exists so a real PDF can be tried against what's here today,
- * without writing a one-off script by hand each time -- see the module README's
- * "Trying it yourself" section.
+ * enough surface yet to justify that ceremony: partial support for three lab formats
+ * so far (#43, #42, and #44's still-in-progress sub-issues), and no GL String
+ * construction (#45) or validation gate (#46) at all. This exists so a real PDF can be
+ * tried against what's here today, without writing a one-off script by hand each time
+ * -- see the module README's "Trying it yourself" section.
  *
  * Deliberately prints candidates as a review worklist, not as trusted output: every
  * line is prefixed with its source line number and shows the exact report text it came
@@ -112,6 +113,9 @@ public class DetectHlaReport {
 		Map<String, ReportDetector> detectors = new LinkedHashMap<>();
 		detectors.put("cegat", new CegatLocusResultLineDetector()::detect);
 		detectors.put("versiti", new VersitiLocusResultLineDetector()::detect);
+		// Only the appendix piece of Histogenetics support so far (issue #50) -- #49
+		// (page-1 table) and #51 (FAILED/PENDING/narrative-ambiguity) are still open.
+		detectors.put("histogenetics-appendix", new HistogeneticsAppendixAccumulator()::detect);
 		return detectors;
 	}
 

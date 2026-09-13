@@ -30,18 +30,21 @@ import java.util.Map;
 import org.nmdp.hlareport.candidate.CegatLocusResultLineDetector;
 import org.nmdp.hlareport.candidate.VersitiLocusResultLineDetector;
 import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsAppendixAccumulator;
+import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsNarrativeAmbiguityDetector;
 import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsPageOneTableDetector;
+import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsPlaceholderTableDetector;
 import org.nmdp.hlareport.extract.PdfTextExtractor;
 
 /**
  * A minimal, interim CLI for manually trying this module's candidate-line detection
  * against a real PDF -- there's no packaged distribution or formal argument parsing
  * (unlike ld-tools' appassembler-based CLIs) because this module doesn't have a stable
- * enough surface yet to justify that ceremony: partial support for three lab formats
- * so far (#43, #42, and #44's still-in-progress sub-issues), and no GL String
- * construction (#45) or validation gate (#46) at all. This exists so a real PDF can be
- * tried against what's here today, without writing a one-off script by hand each time
- * -- see the module README's "Trying it yourself" section.
+ * enough surface yet to justify that ceremony: #44's sub-issues (page-1 table, appendix,
+ * and non-standard result states) are all done now, but #42/#43's labs are otherwise
+ * unrelated, and there's no GL String construction (#45) or validation gate (#46) at
+ * all. This exists so a real PDF can be tried against what's here today, without
+ * writing a one-off script by hand each time -- see the module README's "Trying it
+ * yourself" section.
  *
  * Deliberately prints candidates as a review worklist, not as trusted output: every
  * line is prefixed with its source line number and shows the exact report text it came
@@ -114,9 +117,12 @@ public class DetectHlaReport {
 		Map<String, ReportDetector> detectors = new LinkedHashMap<>();
 		detectors.put("cegat", new CegatLocusResultLineDetector()::detect);
 		detectors.put("versiti", new VersitiLocusResultLineDetector()::detect);
-		// #51 (FAILED/PENDING/narrative-ambiguity) is still open for Histogenetics.
 		detectors.put("histogenetics-appendix", new HistogeneticsAppendixAccumulator()::detect);
 		detectors.put("histogenetics-page1", new HistogeneticsPageOneTableDetector()::detect);
+		detectors.put("histogenetics-failed", new HistogeneticsPlaceholderTableDetector("FAILED")::detect);
+		detectors.put("histogenetics-pending", new HistogeneticsPlaceholderTableDetector("PENDING")::detect);
+		detectors.put("histogenetics-xxxx", new HistogeneticsPlaceholderTableDetector("XXXX")::detect);
+		detectors.put("histogenetics-narrative-ambiguity", new HistogeneticsNarrativeAmbiguityDetector()::detect);
 		return detectors;
 	}
 

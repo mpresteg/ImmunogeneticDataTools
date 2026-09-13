@@ -1,4 +1,4 @@
-# hla-report-extraction (early stage — text extraction + partial candidate-line detection for all 3 labs so far)
+# hla-report-extraction (early stage — text extraction + candidate-line detection for all 3 labs, no GL String construction yet)
 
 ## Purpose
 
@@ -27,10 +27,11 @@ the other two fixtures under `src/test/resources/sample-reports/`.
 
 Prints each detector's candidates as a review worklist (source line number +
 exact report text alongside each one) — **not** a GL String, not validated
-typing data. Right now that's four detectors (`cegat`/#43, `versiti`/#42,
-`histogenetics-appendix`/#50, `histogenetics-page1`/#49 —
-FAILED/PENDING/narrative handling (#51) isn't done yet); running it
-against a report shape a given detector doesn't recognize is expected to
+typing data. Right now that's eight detectors: `cegat`/#43, `versiti`/#42,
+and six Histogenetics ones (`histogenetics-page1`/#49,
+`histogenetics-appendix`/#50, `histogenetics-failed`/`histogenetics-pending`/
+`histogenetics-xxxx`/`histogenetics-narrative-ambiguity`, all #51). Running
+it against a report shape a given detector doesn't recognize is expected to
 print 0 candidates for that detector, not an error — that's not a bug, it
 just means nothing here
 recognizes that report's shape yet (see "How tethered is this to the 3 known
@@ -325,9 +326,40 @@ the stale copy.
      `LocusLookup` (shared across labs) and `HistogeneticsNoiseFilter`
      (shared across all Histogenetics detection).
 
-   **#51 not started** — FAILED/PENDING/narrative-ambiguity handling.
-   Independent of #49/#50, same as CeGaT/Versiti are independent of each
-   other.
+   **#51 done — and all four of #44's sub-issues are now complete.** The
+   fixture's 3 non-"Complete" bundled reports (FAILED, PENDING, and one
+   using `XXXX` placeholders with narrative-ambiguity prose) are surfaced
+   distinctly rather than silently producing zero candidates the way an
+   unrecognized report shape correctly does — a FAILED or PENDING result
+   is real information a reviewer needs to see, not indistinguishable from
+   "nothing here understood this report."
+   - `HistogeneticsPlaceholderTableDetector` handles FAILED, PENDING, *and*
+     XXXX with one class, parameterized by which placeholder word to look
+     for — confirmed against the real fixture that all three use the
+     *exact same* table shape `HistogeneticsPageOneTableDetector` reads for
+     real G-codes, just with a different literal value in every cell. The
+     issue itself guessed "likely three genuinely separate
+     detectors/candidate types" going in; real data showed the table
+     portion of all three collapses into one, with only the narrative
+     piece below needing something different — three real confirmations
+     of one shape is what justified generalizing here, not a guess
+     extended from one sample.
+   - `HistogeneticsSampleBlockHeader` (the `"Histo ID :"` marker and the
+     9-column locus-header-row parsing) got factored out of
+     `HistogeneticsPageOneTableDetector` once this detector needed the
+     identical logic — the same discipline as `HistogeneticsCode` and
+     `LocusLookup` before it.
+   - `HistogeneticsNarrativeAmbiguityDetector` is a genuinely different
+     kind of detector from everything else in this module: it parses
+     prose (`"Possible Allele in A : 01:01:01/02:01:01/30:01:01."` in the
+     report's Report History section), not a table row or column. A fifth
+     distinct ambiguity-representation convention, on top of the four the
+     module README already tracked — bare slash-separated allele
+     designations with no locus prefix at all, embedded in a sentence
+     that (for its first occurrence) shares a physical line with a date
+     and a differently-cased `"Sample Id :"` marker (not the appendix's
+     `"Sample ID :"`, confirmed genuinely different text, not a typo to
+     normalize away).
 3. Human-reviewed candidates converted to a GL String via the existing
    `GLStringUtilities` (issue #45) — Histogenetics' G-codes and NMDP
    allele codes are promising anchors here, since

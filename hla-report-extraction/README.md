@@ -1,4 +1,4 @@
-# hla-report-extraction (early stage — extraction, detection, and GL String construction for all 3 labs; no validation gate yet)
+# hla-report-extraction (early stage — full extraction-to-reviewed-GL-String pipeline for all 3 labs)
 
 ## Purpose
 
@@ -29,8 +29,12 @@ Prints each detector's candidates as a review worklist (source line number +
 exact report text alongside each one), followed by the constructed GL
 String for whichever lab(s) matched — labeled "NOT validated" either way,
 since neither the candidates nor the GL String are trusted output without a
-human actually checking them against the report. Right now that's eight
-detectors: `cegat`/#43, `versiti`/#42, and six Histogenetics ones
+human actually checking them against the report. The CLI stops there
+deliberately: it never calls `ReviewedGlString.confirm(...)` (issue #46)
+itself, since a non-interactive tool can't actually review anything — it
+prints a pointer to that method instead, for you to call yourself once
+you've checked the output by eye. Right now that's eight detectors:
+`cegat`/#43, `versiti`/#42, and six Histogenetics ones
 (`histogenetics-page1`/#49, `histogenetics-appendix`/#50,
 `histogenetics-failed`/`histogenetics-pending`/`histogenetics-xxxx`/
 `histogenetics-narrative-ambiguity`, all #51), plus GL String construction
@@ -454,6 +458,39 @@ the stale copy.
    **All three labs' GL String construction is done now.**
 4. A validation gate before a GL String is considered "reviewed and ready"
    (issue #46) — nothing silently guessed or auto-corrected along the way.
+
+   **Done.** `ReviewedGlString` is a real, type-enforced gate, not a
+   boolean flag someone could set without actually reviewing anything:
+   the only way to get one is `ReviewedGlString.confirm(constructedGlString,
+   reviewedBy)`, which requires an explicit, non-blank reviewer identity —
+   nothing anywhere in this module ever calls it automatically. Mirrors
+   the "No demographic/PHI auto-population without explicit human review"
+   principle above, applied here to the GL String itself: no code path in
+   this module can mark its own output reviewed, only a named human
+   action can. The CLI deliberately never calls it either — a
+   non-interactive tool can't actually review anything, so it just prints
+   each GL String labeled "NOT validated" plus a pointer to call
+   `confirm()` yourself once you've checked it against the report by eye.
+
+   `confirm()` also re-checks `GLStringUtilities.validateGLStringFormat()`
+   at confirmation time — on top of the same check every builder now runs
+   before returning a `ConstructedGlString` at all (`GlStringValidation`,
+   shared across all three builders once all three needed the identical
+   check). Defense in depth, not redundant: a human confirming a GL
+   string by eye is judging whether it matches the report, not
+   re-deriving GL String syntax rules, so a reviewer's claim that a
+   string is correct can't override a structural well-formedness failure
+   — correctness of content is the human judgment call this gate trusts
+   once given; well-formedness of syntax isn't a judgment call at all.
+
+   `ReviewedGlString.toLinkageDisequilibriumGenotypeList(id)` is the
+   actual point of the gate existing: the only place in this module that
+   constructs a real `ld-validation` analysis object, and it's only
+   reachable through a confirmed review — there's no path from "just
+   constructed" straight into `ld-validation`'s own code without going
+   through this gate first.
+
+All four steps of the original "Then" plan are done now.
 
 Deliberately underspecified beyond step 1 — this is a starting hypothesis,
 not a locked design.

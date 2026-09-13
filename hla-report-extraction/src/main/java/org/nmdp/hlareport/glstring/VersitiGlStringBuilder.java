@@ -35,9 +35,8 @@ import org.nmdp.hlareport.candidate.VersitiLocusResultCandidate;
  *
  * Unlike {@link CegatGlStringBuilder}, an allele call here can carry a footnote-resolved
  * ambiguity (see {@link VersitiAmbiguityExpander}) instead of being a complete,
- * standalone designation -- that's the whole reason Versiti wasn't attempted alongside
- * CeGaT: the expansion needed real verification first (see that class's own comment,
- * and the module README).
+ * standalone designation -- see that class's own comment for why expanding it needed
+ * real verification (and domain confirmation from a human) first.
  *
  * A candidate with an UNRESOLVED footnote reference (a marker seen but never matched to
  * a definition -- see
@@ -61,6 +60,7 @@ public class VersitiGlStringBuilder {
 		}
 
 		String glString = String.join(GLStringConstants.GENE_DELIMITER, locusFragments);
+		GlStringValidation.requireValid(glString);
 		return new ConstructedGlString(glString, candidates);
 	}
 

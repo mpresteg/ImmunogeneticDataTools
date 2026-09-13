@@ -101,6 +101,7 @@ public class HistogeneticsGlStringBuilder {
 		}
 
 		String glString = String.join(GLStringConstants.GENE_DELIMITER, locusFragments);
+		GlStringValidation.requireValid(glString);
 		return new ConstructedGlString(glString, sourceCandidates);
 	}
 

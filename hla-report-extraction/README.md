@@ -27,9 +27,9 @@ the other two fixtures under `src/test/resources/sample-reports/`.
 
 Prints each detector's candidates as a review worklist (source line number +
 exact report text alongside each one) — **not** a GL String, not validated
-typing data. Right now that's three detectors (`cegat`/#43, `versiti`/#42,
-`histogenetics-appendix`/#50 — Histogenetics' page-1 table (#49) and
-FAILED/PENDING/narrative handling (#51) aren't done yet); running it
+typing data. Right now that's four detectors (`cegat`/#43, `versiti`/#42,
+`histogenetics-appendix`/#50, `histogenetics-page1`/#49 —
+FAILED/PENDING/narrative handling (#51) isn't done yet); running it
 against a report shape a given detector doesn't recognize is expected to
 print 0 candidates for that detector, not an error — that's not a bug, it
 just means nothing here
@@ -294,9 +294,40 @@ the stale copy.
      own note #4 (no G-code was available, so the reported value *is* the
      NMDP code, duplicated in both columns).
 
-   **#49, #51 not started** — page-1 G-code/NMDP-code table detection, and
-   FAILED/PENDING/narrative-ambiguity handling, respectively. Independent
-   of #50 (and of each other), same as CeGaT/Versiti are independent.
+   **#49 done:** `HistogeneticsPageOneTableDetector` detects the page-1
+   summary table -- a header row of locus labels followed by exactly 2
+   data rows whose values line up with the header BY COLUMN POSITION, a
+   genuinely different shape from every other detector in this module
+   (all of which read one locus per line). Produces one
+   `HistogeneticsSampleResultCandidate` per sample block (patient, donor 1,
+   donor 2), not one per locus like CeGaT/Versiti — the source document
+   itself binds a sample's loci together in one 3-line table, and
+   `Matching Ratio`/`Null Allele Resolution Status` are properties of the
+   whole sample, not any single locus. Confirmed against the real fixture:
+   exactly 3 candidates (not 6) — the FAILED, PENDING, and
+   XXXX/narrative-ambiguity reports each correctly produce zero. Two
+   things worth calling out:
+   - **A real trap, caught by checking actual data before trusting a
+     field**: the report's own `Typing Status :` field is NOT a reliable
+     success signal — it reads `Complete` on the FAILED and
+     XXXX/narrative-ambiguity reports too (confirmed directly in the
+     extracted text), apparently meaning "this report was finalized," not
+     "typing succeeded." Detection instead checks whether each locus's
+     actual reported value is code-shaped
+     (`HistogeneticsCode.isCodeShaped()`) — true for a G-code or NMDP-code,
+     false for `NA`/`FAILED`/`PENDING`/`XXXX`, all of which happen to never
+     start with a digit. `Typing Status` is still captured on the
+     candidate, for transparency, just not trusted.
+   - `HistogeneticsCode`, a shared G-code/NMDP-code shape check, got
+     factored out of `HistogeneticsAppendixAccumulator` (#50) once this
+     detector needed the identical check — another genuine sign of what
+     Histogenetics' own sub-detectors have in common, alongside
+     `LocusLookup` (shared across labs) and `HistogeneticsNoiseFilter`
+     (shared across all Histogenetics detection).
+
+   **#51 not started** — FAILED/PENDING/narrative-ambiguity handling.
+   Independent of #49/#50, same as CeGaT/Versiti are independent of each
+   other.
 3. Human-reviewed candidates converted to a GL String via the existing
    `GLStringUtilities` (issue #45) — Histogenetics' G-codes and NMDP
    allele codes are promising anchors here, since

@@ -30,6 +30,7 @@ import java.util.Map;
 import org.nmdp.hlareport.candidate.CegatLocusResultLineDetector;
 import org.nmdp.hlareport.candidate.VersitiLocusResultLineDetector;
 import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsAppendixAccumulator;
+import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsPageOneTableDetector;
 import org.nmdp.hlareport.extract.PdfTextExtractor;
 
 /**
@@ -113,9 +114,9 @@ public class DetectHlaReport {
 		Map<String, ReportDetector> detectors = new LinkedHashMap<>();
 		detectors.put("cegat", new CegatLocusResultLineDetector()::detect);
 		detectors.put("versiti", new VersitiLocusResultLineDetector()::detect);
-		// Only the appendix piece of Histogenetics support so far (issue #50) -- #49
-		// (page-1 table) and #51 (FAILED/PENDING/narrative-ambiguity) are still open.
+		// #51 (FAILED/PENDING/narrative-ambiguity) is still open for Histogenetics.
 		detectors.put("histogenetics-appendix", new HistogeneticsAppendixAccumulator()::detect);
+		detectors.put("histogenetics-page1", new HistogeneticsPageOneTableDetector()::detect);
 		return detectors;
 	}
 

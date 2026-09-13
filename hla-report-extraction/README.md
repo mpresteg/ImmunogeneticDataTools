@@ -361,10 +361,48 @@ the stale copy.
      `"Sample ID :"`, confirmed genuinely different text, not a typo to
      normalize away).
 3. Human-reviewed candidates converted to a GL String via the existing
-   `GLStringUtilities` (issue #45) — Histogenetics' G-codes and NMDP
-   allele codes are promising anchors here, since
-   `GLStringUtilities.decodeMAC()` already exists to decode NMDP-coded
-   typings.
+   `GLStringUtilities` (issue #45).
+
+   **CeGaT done.** `CegatGlStringBuilder` builds a full multi-locus GL
+   String from `LocusResultCandidate`s — `HLA-` prefixing and joining with
+   the existing grammar's own delimiters (`+` within a locus, `^` between
+   loci), nothing more. CeGaT was the deliberate starting point (same
+   reasoning as issue #43 picking it first for detection): every allele
+   call is already a complete, standalone designation, so this needed no
+   shorthand interpretation at all. Verified against the real fixture two
+   ways, not just this module's own assertions: `GLStringUtilities.
+   validateGLStringFormat()` accepts the constructed string, and handing
+   it to a real `LinkageDisequilibriumGenotypeList` (ld-validation's own
+   class) succeeds and round-trips unchanged — per this repo's
+   `CONTRIBUTING.md` ("prefer verifying behavior for real"). A
+   single-call locus (the DRB345 case) produces a single-copy fragment
+   with no `+` at all, rather than guessing homozygosity by duplicating
+   the one known call.
+
+   **Versiti and Histogenetics deliberately not attempted yet** — both
+   have a real open question, not just unstarted work:
+   - Versiti's footnote shorthand (`C*07:04/11`) has a genuine semantic
+     ambiguity this module can't resolve from the report text alone.
+     Tested `GLStringUtilities.fullyQualifyGLString()` (the existing
+     utility that would seem to handle exactly this) directly against it:
+     it produces `HLA-C*07:04/HLA-C*11` — treating `11` as a standalone
+     one-field allele group, *not* as shorthand for `C*07:11` sharing the
+     `07` first field. Real HLA G-group conventions more commonly share
+     leading fields this way, which would make that output wrong, but
+     this module has no way to confirm which reading is actually correct
+     for this specific footnote without either authoritative reference
+     verification or domain input — exactly the kind of thing "structural
+     signal, not a content guess" exists to catch. Building GL String
+     construction for Versiti on top of an unverified assumption here
+     would risk silently encoding the wrong alleles.
+   - Histogenetics' G-codes/NMDP-codes remain the promising anchor
+     `GLStringUtilities.decodeMAC()` was already built for — but that
+     method makes a live network call to `hml.nmdp.org`'s MAC decode API
+     (confirmed by reading its implementation, not assumed). Not the same
+     privacy concern as the module's stance against VLM/cloud extraction
+     (an NMDP allele code carries no PHI, unlike a page image), but a real
+     external dependency worth verifying actually works as expected
+     before building on it, which hasn't been done yet.
 4. A validation gate before a GL String is considered "reviewed and ready"
    (issue #46) — nothing silently guessed or auto-corrected along the way.
 

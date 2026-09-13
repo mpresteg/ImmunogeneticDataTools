@@ -23,11 +23,8 @@ package org.nmdp.hlareport.candidate.histogenetics;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.dash.valid.Locus;
-import org.nmdp.hlareport.candidate.LocusLookup;
 
 /**
  * Detects Histogenetics' page-1 summary table: a header row of locus labels (e.g.
@@ -49,17 +46,19 @@ import org.nmdp.hlareport.candidate.LocusLookup;
  * whole table, so no candidate is produced for it at all -- the same "0 candidates,
  * not an error" convention every other detector already uses for a report shape it
  * doesn't recognize.
+ *
+ * Those placeholder blocks aren't just ignored, though -- see
+ * {@link HistogeneticsPlaceholderTableDetector} (issue #51), which reads the identical
+ * table shape looking for exactly the placeholders this class skips. The two share
+ * {@link HistogeneticsSampleBlockHeader} for recognizing a sample marker and parsing
+ * the locus-label header row, factored out once #51 needed the identical logic this
+ * class already had.
  */
 public class HistogeneticsPageOneTableDetector {
-	private static final String HISTO_ID_MARKER = "Histo ID :";
 	private static final String TYPING_STATUS_PREFIX = "Typing Status :";
 	private static final String MATCHING_RATIO_PREFIX = "Matching Ratio with Patient :";
 	private static final String NULL_ALLELE_STATUS_PREFIX = "Null Allele Resolution Status :";
 	private static final String NULL_ALLELE_STATUS_TERMINATOR = "excluded";
-
-	// e.g. "A*", "DRB345*" -- a locus header token is just the locus's own shortName
-	// with a trailing "*", nothing else on the token.
-	private static final Pattern LOCUS_HEADER_TOKEN_PATTERN = Pattern.compile("^([A-Za-z0-9]+)\\*$");
 
 	private final HistogeneticsNoiseFilter noiseFilter = new HistogeneticsNoiseFilter();
 
@@ -72,14 +71,14 @@ public class HistogeneticsPageOneTableDetector {
 		while (i < lines.size()) {
 			String trimmedLine = lines.get(i).getText().trim();
 
-			int histoIdIndex = trimmedLine.indexOf(HISTO_ID_MARKER);
-			if (histoIdIndex >= 0) {
-				currentSampleId = trimmedLine.substring(histoIdIndex + HISTO_ID_MARKER.length()).trim();
+			String sampleId = HistogeneticsSampleBlockHeader.extractSampleId(trimmedLine);
+			if (sampleId != null) {
+				currentSampleId = sampleId;
 				i++;
 				continue;
 			}
 
-			List<Locus> headerLoci = parseLocusHeaderRow(trimmedLine);
+			List<Locus> headerLoci = HistogeneticsSampleBlockHeader.parseLocusHeaderRow(trimmedLine);
 			if (headerLoci == null || i + 2 >= lines.size()) {
 				i++;
 				continue;
@@ -139,28 +138,6 @@ public class HistogeneticsPageOneTableDetector {
 		}
 
 		return candidates;
-	}
-
-	private List<Locus> parseLocusHeaderRow(String trimmedLine) {
-		String[] tokens = trimmedLine.split("\\s+");
-		if (tokens.length == 0) {
-			return null;
-		}
-
-		List<Locus> loci = new ArrayList<>();
-		for (String token : tokens) {
-			Matcher matcher = LOCUS_HEADER_TOKEN_PATTERN.matcher(token);
-			if (!matcher.matches()) {
-				return null;
-			}
-			Locus locus = LocusLookup.byShortName(matcher.group(1));
-			if (locus == null) {
-				return null;
-			}
-			loci.add(locus);
-		}
-
-		return loci;
 	}
 
 	// Reads DOWN each locus's own column across both data rows (not across a row) --

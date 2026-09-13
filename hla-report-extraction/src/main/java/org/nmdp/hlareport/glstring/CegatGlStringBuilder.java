@@ -37,10 +37,9 @@ import org.nmdp.hlareport.candidate.LocusResultCandidate;
  * Building it requires no shorthand interpretation at all -- just prefixing "HLA-" and
  * joining with the existing grammar's own delimiters
  * ({@link GLStringConstants#GENE_COPY_DELIMITER} within a locus,
- * {@link GLStringConstants#GENE_DELIMITER} between loci). Versiti and Histogenetics are
- * deliberately NOT attempted here yet -- see the module README for why (Versiti's
- * footnote shorthand has a genuine open semantic question; Histogenetics' NMDP-code
- * decoding depends on a live network call whose behavior needs verifying first).
+ * {@link GLStringConstants#GENE_DELIMITER} between loci). See
+ * {@link VersitiGlStringBuilder} and {@link HistogeneticsGlStringBuilder} for the other
+ * two labs, each needing genuinely different interpretation logic of its own.
  *
  * Assembles ALL given candidates into ONE GL String, on the assumption they all belong
  * to the same subject -- true for every CeGaT report seen so far (a single-patient
@@ -52,6 +51,7 @@ public class CegatGlStringBuilder {
 		String glString = candidates.stream().map(this::buildLocusFragment)
 				.collect(Collectors.joining(GLStringConstants.GENE_DELIMITER));
 
+		GlStringValidation.requireValid(glString);
 		return new ConstructedGlString(glString, candidates);
 	}
 

@@ -48,19 +48,23 @@ import org.nmdp.hlareport.glstring.VersitiGlStringBuilder;
  * A minimal, interim CLI for manually trying this module's candidate-line detection
  * against a real PDF -- there's no packaged distribution or formal argument parsing
  * (unlike ld-tools' appassembler-based CLIs) because this module doesn't have a stable
- * enough surface yet to justify that ceremony: #44's sub-issues (page-1 table, appendix,
- * and non-standard result states) are all done, and so is all of #45 (CeGaT, Versiti,
- * and Histogenetics GL String construction), but there's no validation gate (#46) at
- * all. This exists so a real PDF can be tried against what's here today, without
- * writing a one-off script by hand each time -- see the module README's "Trying it
- * yourself" section.
+ * enough surface yet to justify that ceremony: #44's sub-issues, all of #45 (CeGaT,
+ * Versiti, and Histogenetics GL String construction), and #46's review gate
+ * ({@code org.nmdp.hlareport.glstring.ReviewedGlString}) are all done now, but nothing
+ * past that (this remains a library plus this one manual-inspection CLI, not a full
+ * review workflow). This exists so a real PDF can be tried against what's here today,
+ * without writing a one-off script by hand each time -- see the module README's "Trying
+ * it yourself" section.
  *
- * Deliberately prints candidates (and the constructed GL String) as
- * a review worklist, not as trusted output: every candidate line is prefixed with its
- * source line number and shows the exact report text it came from, and the GL string
- * section carries the same "not validated" framing, per the module's "structural
- * signal, not a content guess" principle. Nothing here should be treated as validated
- * typing data without a human actually checking it against the report.
+ * Deliberately prints candidates and the constructed GL String as a review worklist,
+ * never as trusted output, and deliberately never calls
+ * {@code ReviewedGlString.confirm(...)} itself: every candidate line is prefixed with
+ * its source line number and shows the exact report text it came from, and the GL
+ * string section carries a "NOT validated" label plus a pointer to that method, per the
+ * module's "structural signal, not a content guess" principle. A non-interactive tool
+ * can't actually review anything -- the review has to happen outside this code, by a
+ * person reading this output and checking it against the source report, who then calls
+ * {@code ReviewedGlString.confirm(...)} themselves once they're satisfied.
  */
 public class DetectHlaReport {
 	// A small registry rather than hardcoding one detector as the only option -- adding
@@ -126,6 +130,11 @@ public class DetectHlaReport {
 		printCegatGlString(extractedText);
 		printVersitiGlString(extractedText);
 		printHistogeneticsGlStrings(extractedText);
+
+		System.out.println("Checked a GL String above against the report and confirmed it's correct? This CLI"
+				+ " won't do that step for you (see this class's own comment on why) -- call"
+				+ " ReviewedGlString.confirm(constructedGlString, \"<your name>\") yourself, then"
+				+ " .toLinkageDisequilibriumGenotypeList(id) on the result to hand it to ld-validation.");
 	}
 
 	// GL String construction (#45) is now implemented for all three labs. Not run

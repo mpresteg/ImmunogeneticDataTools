@@ -32,13 +32,16 @@ import org.nmdp.hlareport.candidate.LocusResultCandidate;
 import org.nmdp.hlareport.candidate.VersitiLocusResultCandidate;
 import org.nmdp.hlareport.candidate.VersitiLocusResultLineDetector;
 import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsAppendixAccumulator;
+import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsAppendixEntry;
 import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsNarrativeAmbiguityDetector;
 import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsPageOneTableDetector;
 import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsPlaceholderTableDetector;
+import org.nmdp.hlareport.candidate.histogenetics.HistogeneticsSampleResultCandidate;
 import org.nmdp.hlareport.extract.PdfTextExtractor;
 import org.nmdp.hlareport.glstring.CegatGlStringBuilder;
 import org.nmdp.hlareport.glstring.ConstructedGlString;
 import org.nmdp.hlareport.glstring.GlStringConstructionException;
+import org.nmdp.hlareport.glstring.HistogeneticsGlStringBuilder;
 import org.nmdp.hlareport.glstring.VersitiGlStringBuilder;
 
 /**
@@ -46,13 +49,13 @@ import org.nmdp.hlareport.glstring.VersitiGlStringBuilder;
  * against a real PDF -- there's no packaged distribution or formal argument parsing
  * (unlike ld-tools' appassembler-based CLIs) because this module doesn't have a stable
  * enough surface yet to justify that ceremony: #44's sub-issues (page-1 table, appendix,
- * and non-standard result states) are all done, and so is #45's CeGaT and Versiti cases,
- * but GL String construction is otherwise still only those two labs (see the module
- * README), and there's no validation gate (#46) at all. This exists so a real PDF can
- * be tried against what's here today, without writing a one-off script by hand each
- * time -- see the module README's "Trying it yourself" section.
+ * and non-standard result states) are all done, and so is all of #45 (CeGaT, Versiti,
+ * and Histogenetics GL String construction), but there's no validation gate (#46) at
+ * all. This exists so a real PDF can be tried against what's here today, without
+ * writing a one-off script by hand each time -- see the module README's "Trying it
+ * yourself" section.
  *
- * Deliberately prints candidates (and, for CeGaT/Versiti, the constructed GL String) as
+ * Deliberately prints candidates (and the constructed GL String) as
  * a review worklist, not as trusted output: every candidate line is prefixed with its
  * source line number and shows the exact report text it came from, and the GL string
  * section carries the same "not validated" framing, per the module's "structural
@@ -122,12 +125,13 @@ public class DetectHlaReport {
 
 		printCegatGlString(extractedText);
 		printVersitiGlString(extractedText);
+		printHistogeneticsGlStrings(extractedText);
 	}
 
-	// GL String construction (#45) is only implemented for CeGaT and Versiti so far --
-	// see the module README for why Histogenetics isn't attempted yet. Not run through
-	// the generic DETECTORS registry above since each needs its own typed candidate
-	// list, not the List<?> that registry's shared interface deliberately uses.
+	// GL String construction (#45) is now implemented for all three labs. Not run
+	// through the generic DETECTORS registry above since each needs its own typed
+	// candidate list, not the List<?> that registry's shared interface deliberately
+	// uses.
 	private static void printCegatGlString(String extractedText) {
 		List<LocusResultCandidate> cegatCandidates = new CegatLocusResultLineDetector().detect(extractedText);
 		if (cegatCandidates.isEmpty()) {
@@ -157,6 +161,30 @@ public class DetectHlaReport {
 			System.out.println("  Could not build a GL String: " + e.getMessage());
 		}
 		System.out.println();
+	}
+
+	// One GL String per sample (patient, donor 1, donor 2, ...) -- Histogenetics can
+	// bundle more than one subject in a single report, unlike CeGaT/Versiti.
+	private static void printHistogeneticsGlStrings(String extractedText) {
+		List<HistogeneticsSampleResultCandidate> samples = new HistogeneticsPageOneTableDetector().detect(extractedText);
+		if (samples.isEmpty()) {
+			return;
+		}
+
+		List<HistogeneticsAppendixEntry> appendixEntries = new HistogeneticsAppendixAccumulator().detect(extractedText);
+		HistogeneticsGlStringBuilder builder = new HistogeneticsGlStringBuilder();
+
+		for (HistogeneticsSampleResultCandidate sample : samples) {
+			System.out.println("== histogenetics GL String for " + sample.getSampleId()
+					+ " (NOT validated -- confirm against the candidates above first) ==");
+			try {
+				ConstructedGlString glString = builder.build(sample, appendixEntries);
+				System.out.println("  " + glString.getGlString());
+			} catch (GlStringConstructionException e) {
+				System.out.println("  Could not build a GL String: " + e.getMessage());
+			}
+			System.out.println();
+		}
 	}
 
 	private static Map<String, ReportDetector> buildDetectorRegistry() {

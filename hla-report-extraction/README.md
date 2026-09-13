@@ -379,30 +379,39 @@ the stale copy.
    with no `+` at all, rather than guessing homozygosity by duplicating
    the one known call.
 
-   **Versiti and Histogenetics deliberately not attempted yet** — both
-   have a real open question, not just unstarted work:
-   - Versiti's footnote shorthand (`C*07:04/11`) has a genuine semantic
-     ambiguity this module can't resolve from the report text alone.
-     Tested `GLStringUtilities.fullyQualifyGLString()` (the existing
-     utility that would seem to handle exactly this) directly against it:
-     it produces `HLA-C*07:04/HLA-C*11` — treating `11` as a standalone
-     one-field allele group, *not* as shorthand for `C*07:11` sharing the
-     `07` first field. Real HLA G-group conventions more commonly share
-     leading fields this way, which would make that output wrong, but
-     this module has no way to confirm which reading is actually correct
-     for this specific footnote without either authoritative reference
-     verification or domain input — exactly the kind of thing "structural
-     signal, not a content guess" exists to catch. Building GL String
-     construction for Versiti on top of an unverified assumption here
-     would risk silently encoding the wrong alleles.
-   - Histogenetics' G-codes/NMDP-codes remain the promising anchor
-     `GLStringUtilities.decodeMAC()` was already built for — but that
-     method makes a live network call to `hml.nmdp.org`'s MAC decode API
-     (confirmed by reading its implementation, not assumed). Not the same
-     privacy concern as the module's stance against VLM/cloud extraction
-     (an NMDP allele code carries no PHI, unlike a page image), but a real
-     external dependency worth verifying actually works as expected
-     before building on it, which hasn't been done yet.
+   **Versiti done too.** The footnote-shorthand question got resolved —
+   the user confirmed `C*07:04/11` means `C*07:04 or C*07:11` (sharing the
+   `07` leading field), settling the ambiguity flagged when the CeGaT
+   slice landed. That confirmation led to a real finding: comparing
+   against `ld-validation`'s own `shorthandExamples.txt` test fixture
+   shows its shorthand convention *always restates* a shared leading
+   field (`B*38:01:01/38:27` — the `38` appears on both sides, never
+   dropped) — so `GLStringUtilities.fullyQualifyGLString()` isn't buggy,
+   it's correctly built for a *different* shorthand convention than
+   Versiti's. That's why the fix is new interpretation logic scoped to
+   this module (`VersitiAmbiguityExpander`), not a change to the shared
+   `ld-validation` utility, which stays correct for the convention it
+   already serves. `VersitiGlStringBuilder` uses it to expand a
+   footnote-resolved ambiguity before building the locus fragment;
+   verified the same two ways as CeGaT (`validateGLStringFormat()` +
+   a real `LinkageDisequilibriumGenotypeList`) against the real sample's
+   `HLA-C*01:01+HLA-C*07:04/HLA-C*07:11`. An allele call with an
+   *unresolved* footnote reference (a marker seen but never matched to a
+   definition) makes the whole build fail loudly
+   (`GlStringConstructionException`) rather than silently produce a GL
+   String missing real ambiguity — a reviewer has no way to tell
+   "correctly complete" apart from "silently incomplete" just by looking
+   at the result, so this refuses to guess.
+
+   **Histogenetics deliberately not attempted yet** — its G-codes/NMDP
+   codes remain the promising anchor `GLStringUtilities.decodeMAC()` was
+   already built for, but that method makes a live network call to
+   `hml.nmdp.org`'s MAC decode API (confirmed by reading its
+   implementation, not assumed). Not the same privacy concern as the
+   module's stance against VLM/cloud extraction (an NMDP allele code
+   carries no PHI, unlike a page image), but a real external dependency
+   worth verifying actually works as expected before building on it,
+   which hasn't been done yet.
 4. A validation gate before a GL String is considered "reviewed and ready"
    (issue #46) — nothing silently guessed or auto-corrected along the way.
 

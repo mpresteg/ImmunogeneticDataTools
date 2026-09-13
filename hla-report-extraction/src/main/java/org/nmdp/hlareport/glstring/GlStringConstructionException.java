@@ -23,7 +23,9 @@ package org.nmdp.hlareport.glstring;
 
 /**
  * Thrown when a GL String builder has real candidates to work with but cannot safely
- * convert one of them -- e.g. a footnote reference that was never resolved, or a locus
+ * convert one of them -- e.g. a footnote reference that was never resolved (see
+ * {@link org.nmdp.hlareport.candidate.FootnoteReferencedAlleleCall#hasUnresolvedFootnoteReference()}),
+ * ambiguity shorthand {@link VersitiAmbiguityExpander} doesn't recognize, or a locus
  * value with no matching appendix entry to expand it (see
  * {@link HistogeneticsGlStringBuilder}).
  *

@@ -1,4 +1,4 @@
-# hla-report-extraction (early stage — text extraction + candidate-line detection for all 3 labs, no GL String construction yet)
+# hla-report-extraction (early stage — extraction, detection, and GL String construction for all 3 labs; no validation gate yet)
 
 ## Purpose
 
@@ -26,14 +26,17 @@ Swap in the path to any PDF you want to try — one of your own, or either of
 the other two fixtures under `src/test/resources/sample-reports/`.
 
 Prints each detector's candidates as a review worklist (source line number +
-exact report text alongside each one) — **not** a GL String, not validated
-typing data. Right now that's eight detectors: `cegat`/#43, `versiti`/#42,
-and six Histogenetics ones (`histogenetics-page1`/#49,
-`histogenetics-appendix`/#50, `histogenetics-failed`/`histogenetics-pending`/
-`histogenetics-xxxx`/`histogenetics-narrative-ambiguity`, all #51). Running
-it against a report shape a given detector doesn't recognize is expected to
-print 0 candidates for that detector, not an error — that's not a bug, it
-just means nothing here
+exact report text alongside each one), followed by the constructed GL
+String for whichever lab(s) matched — labeled "NOT validated" either way,
+since neither the candidates nor the GL String are trusted output without a
+human actually checking them against the report. Right now that's eight
+detectors: `cegat`/#43, `versiti`/#42, and six Histogenetics ones
+(`histogenetics-page1`/#49, `histogenetics-appendix`/#50,
+`histogenetics-failed`/`histogenetics-pending`/`histogenetics-xxxx`/
+`histogenetics-narrative-ambiguity`, all #51), plus GL String construction
+(#45) for all three labs. Running it against a report shape a given
+detector doesn't recognize is expected to print 0 candidates for that
+detector, not an error — that's not a bug, it just means nothing here
 recognizes that report's shape yet (see "How tethered is this to the 3 known
 reports?" below).
 
@@ -379,6 +382,30 @@ the stale copy.
    with no `+` at all, rather than guessing homozygosity by duplicating
    the one known call.
 
+   **Versiti done too.** The footnote-shorthand question got resolved —
+   the user confirmed `C*07:04/11` means `C*07:04 or C*07:11` (sharing the
+   `07` leading field), settling the ambiguity flagged when the CeGaT
+   slice landed. That confirmation led to a real finding: comparing
+   against `ld-validation`'s own `shorthandExamples.txt` test fixture
+   shows its shorthand convention *always restates* a shared leading
+   field (`B*38:01:01/38:27` — the `38` appears on both sides, never
+   dropped) — so `GLStringUtilities.fullyQualifyGLString()` isn't buggy,
+   it's correctly built for a *different* shorthand convention than
+   Versiti's. That's why the fix is new interpretation logic scoped to
+   this module (`VersitiAmbiguityExpander`), not a change to the shared
+   `ld-validation` utility, which stays correct for the convention it
+   already serves. `VersitiGlStringBuilder` uses it to expand a
+   footnote-resolved ambiguity before building the locus fragment;
+   verified the same two ways as CeGaT (`validateGLStringFormat()` +
+   a real `LinkageDisequilibriumGenotypeList`) against the real sample's
+   `HLA-C*01:01+HLA-C*07:04/HLA-C*07:11`. An allele call with an
+   *unresolved* footnote reference (a marker seen but never matched to a
+   definition) makes the whole build fail loudly
+   (`GlStringConstructionException`) rather than silently produce a GL
+   String missing real ambiguity — a reviewer has no way to tell
+   "correctly complete" apart from "silently incomplete" just by looking
+   at the result, so this refuses to guess.
+
    **Histogenetics done too — and without `decodeMAC()`.** The natural
    assumption going in was that Histogenetics' G-codes/NMDP-codes would
    need `GLStringUtilities.decodeMAC()`, the utility built for exactly
@@ -424,22 +451,7 @@ the stale copy.
    `ld-validation` already has its own judgment call about "too ambiguous
    to safely analyze," and this module doesn't need to reinvent it.
 
-   **Versiti deliberately not attempted yet** — it has a real open
-   question, not just unstarted work: its footnote shorthand
-   (`C*07:04/11`) has a genuine semantic ambiguity this module can't
-   resolve from the report text alone. Tested
-   `GLStringUtilities.fullyQualifyGLString()` (the existing utility that
-   would seem to handle exactly this) directly against it: it produces
-   `HLA-C*07:04/HLA-C*11` — treating `11` as a standalone one-field allele
-   group, *not* as shorthand for `C*07:11` sharing the `07` first field.
-   Real HLA G-group conventions more commonly share leading fields this
-   way, which would make that output wrong, but this module has no way to
-   confirm which reading is actually correct for this specific footnote
-   without either authoritative reference verification or domain input —
-   exactly the kind of thing "structural signal, not a content guess"
-   exists to catch. Building GL String construction for Versiti on top of
-   an unverified assumption here would risk silently encoding the wrong
-   alleles.
+   **All three labs' GL String construction is done now.**
 4. A validation gate before a GL String is considered "reviewed and ready"
    (issue #46) — nothing silently guessed or auto-corrected along the way.
 

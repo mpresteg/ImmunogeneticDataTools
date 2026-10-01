@@ -175,6 +175,19 @@ samples obtained so far have a real text layer, so there's been nothing to
 actually test OCR against yet either — text-layer extraction alone has
 sufficed.
 
+## Known limitations
+
+Each candidate-line detector is tethered to the one report it was built
+against, not to HLA report semantics generally (see "How tethered is this
+to the 3 known reports?" above). Two real stress tests haven't happened yet
+and would tell us more than a brand-new lab's report would: a **second**
+report from a lab already covered (Versiti/CeGaT/Histogenetics) — tests
+whether a detector survives that lab's own template drift, not just
+differences across labs — and a report using a fundamentally different
+notation, e.g. serological equivalents (`A2, B7`) instead of star-allele.
+Don't generalize the detector design ahead of evidence from either; revisit
+once one of these shows up.
+
 ## Then (tentative — more real report samples will refine or replace this)
 
 Tracked as GitHub issues on this fork now that step 1 made the remaining

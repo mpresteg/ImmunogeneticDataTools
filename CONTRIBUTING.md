@@ -80,9 +80,14 @@ taking minutes for real reference data). Use the packaged jar for that instead.
 
 ## Releasing the Docker image
 
-The `ld-service` image is published to GitHub Container Registry
-(`ghcr.io/<owner>/ld-service`, for `linux/amd64` and `linux/arm64`) by
-`.github/workflows/publish-image.yml`:
+Users pull the `ld-service` image from Docker Hub (`nmdpbioinformatics/ld-service`); the README and
+`ld-service/docker-compose.yml` point there. **Docker Hub is currently pushed by hand** (amd64
+only). `.github/workflows/publish-image.yml` still publishes to GitHub Container Registry
+(`ghcr.io/<owner>/ld-service`, `linux/amd64` and `linux/arm64`), where the org-owned package comes
+out private because the organization disables public packages. Moving the workflow to Docker
+Hub needs a `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` Actions secret pair from an org admin, and
+an explicit image name rather than one derived from the GitHub owner (`nmdp-bioinformatics` has a
+hyphen, `nmdpbioinformatics` doesn't). The workflow:
 
 - **Pushing a version tag** (`vX.Y.Z`) publishes `:X.Y.Z` (plus `:X.Y`, and `:latest` for
   non-prerelease tags). The Maven version in the poms **must already equal the tag** — the
@@ -98,8 +103,9 @@ The `ld-service` image is published to GitHub Container Registry
   (waits for its health check) without publishing; tick "push" to publish a test image tagged
   with the branch name and commit SHA (never `:latest`). Use this to dry-run changes to the
   Dockerfile or workflow before a release.
-- The first publish creates the package as private; a repository admin has to make it public
-  (package settings → Change visibility) once, and the organization must allow public packages.
+- On a personal fork the first GHCR publish creates the package as private and a repository admin
+  makes it public once (package settings → Change visibility); under the org that setting is
+  disabled, which is why users pull from Docker Hub.
 
 ## Commit messages
 

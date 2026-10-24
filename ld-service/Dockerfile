@@ -5,8 +5,8 @@
 #   docker build -f ld-service/Dockerfile -t ld-service:local .
 # docker-compose.yml in this directory does exactly that.
 #
-# Released images are published to GHCR by .github/workflows/publish-image.yml (linux/amd64 and
-# linux/arm64). The build stage below is pinned to the BUILD platform because the jar is
+# Released images are distributed on Docker Hub as nmdpbioinformatics/ld-service (the CI workflow
+# .github/workflows/publish-image.yml builds linux/amd64 and linux/arm64). The build stage below is pinned to the BUILD platform because the jar is
 # architecture-independent: a multi-arch build then runs Maven natively once and only the small
 # runtime stage differs per architecture, instead of running all of Maven under QEMU emulation.
 
@@ -21,8 +21,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 
 FROM eclipse-temurin:25-jre
 # Static labels for local builds; the publish workflow overrides/adds the OCI source, version and
-# revision labels from the repository it is built in (which is also what links the GHCR package to
-# that repository).
+# revision labels from the repository it is built in.
 LABEL org.opencontainers.image.title="ld-service" \
       org.opencontainers.image.description="HLA linkage disequilibrium validation: REST API and browser UI (HLAHapV / ImmunogeneticDataTools)" \
       org.opencontainers.image.licenses="LGPL-3.0-or-later"
